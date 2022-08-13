@@ -1,0 +1,55 @@
+---
+
+# 两种安装方式
+# 1.从下载包安装
+- name: Install from deb package
+  when: kibana_package_url is defined and kibana_package_url != ""
+  block:
+  - name: Download kibana deb package
+    get_url:
+      url: '{{ kibana_package_url }}'
+      dest: '{{ kibana_package }}'
+      timeout: '{{ url_timeout }}'
+      checksum: 'sha512:{{ kibana_package_url }}.sha512'
+    tags: package_kibana
+    register: kibana_get_url
+    until: kibana_get_url is not failed
+    retries: 2
+    delay: 30
+
+  - name: Install kibana deb package
+    apt:
+      deb: '{{ kibana_package }}'
+    become: true
+    tags: install_kibana
+
+# 2.从repo仓库安装
+- name: Install from repository
+  when: kibana_package_url is not defined or kibana_package_url == ""
+  block:
+  - name: "Check if elasticsearch-keyring exists"
+  stat:
+    path: "/usr/share/keyrings/elasticsearch-keyring.gpg"
+  register: elasticsearch_gpg
+
+  # Add elasticsearch PSK
+  - name: Add elasticsearch public signing key
+    shell: "wget -qO - {{ es_apt_key }} | sudo gpg --dearmor -o /usr/share/keyrings/elasticsearch-keyring.gpg"
+    when: not elasticsearch_gpg.stat.exists
+
+  # Add elasticsearch repo definitions
+  - name: Add elasticsearch repo definitions
+    apt_repository:
+      repo: "deb [signed-by=/usr/share/keyrings/elasticsearch-keyring.gpg] {{ elastic_repo }} stable main"
+      state: present
+    when: not elasticsearch_gpg.stat.exists
+  
+  - name: Update repository
+    apt: update_cache=true
+  
+  - name: Install package
+    become: true
+    tags: install_kibana
+    apt:
+      name: '{{ kibana_package }}{% if kibana_version is defined and kibana_version != "" %}={{ kibana_version }}{% endif %}'
+      state: present

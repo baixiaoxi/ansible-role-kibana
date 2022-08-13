@@ -1,0 +1,19 @@
+# ----------------------------------------------------------------------------
+# Stop kibana
+# ----------------------------------------------------------------------------
+---
+
+- name: Stop kibana process
+  block:
+    - name: Get kibana process
+      shell: "ps -efw | grep kibana | grep -v grep | awk '{print $2}'"
+      args:
+        executable: /bin/bash
+      register: kibana_stop_process_id
+      failed_when: false
+      changed_when: false
+      
+    - name: Stop kibana process
+      command: "kill -SIGTERM {{ kibana_stop_process_id.stdout }}"
+      when: kibana_stop_process_id.stdout | length > 0
+  tags: stop_kibana

@@ -1,0 +1,77 @@
+# ----------------------------------------------------------------------------
+# If a user specifies a file, it takes higher precedence
+# If a user specifies kibana_config_params_strict=True internal params are appended, otherwise they are appended
+# ----------------------------------------------------------------------------
+---
+
+# 备份配置文件
+- name: Save original kibana configuration
+  become: '{{ kibana_run_as_root | default(omit) }}'
+  copy:
+    src: '{{ kibana_config_file }}'
+    dest: '{{ kibana_config_file }}.bak'
+    owner: root
+    group: "{{ kibana_group }}"
+    mode: 0660
+    remote_src: true
+
+# 创建日志目录
+- name: Create kibana log directory
+  file:
+    path: '{{ kibana_log_dir }}'
+    state: directory
+    mode: 0777
+  become: true
+  tags: kibana_log_check
+
+- name: Get encryption keys
+  include_tasks: '{{ ansible_system | lower }}/kibana_encryption_key.yml'
+
+# 拷贝配置文件到服务器上
+- name: Copy Configuration File
+  become: yes
+  template:
+    src: kibana.yml.j2
+    dest: "{{ kibana_config_dir }}/kibana.yml"
+    owner: root
+    group: "{{ kibana_group }}"
+    mode: "660"
+    force: yes
+  notify: restart kibana
+
+# 创建秘钥目录
+- name: Create secrects directory
+  become: yes
+  file:
+    path: '{{ kibana_config_dir }}/certs'
+    state: directory
+    owner: root
+    group: "{{ kibana_group }}"
+    mode: 0755
+    force: yes
+
+- name: Ensure kibana secrects directory exists
+  become: yes
+  file:
+    path: '{{ kibana_config_dir }}/certs/kibana'
+    state: directory
+    owner: root
+    group: "{{ kibana_group }}"
+    mode: 0755
+    force: yes
+
+# 上传秘钥文件
+- name: Upload certificate files
+  become: yes
+  copy:
+    src: "{{ elk_certs_dir }}/{{ certs_item }}"
+    dest: "{{ kibana_config_dir }}/certs/{{ certs_item }}"
+    owner: root
+    group: "{{ kibana_group }}"
+    mode: "755"
+  with_items:
+    - kibana/elasticsearch-ca.pem
+  loop_control:
+    loop_var: certs_item
+  notify: restart kibana
+  

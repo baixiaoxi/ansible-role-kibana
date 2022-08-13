@@ -1,0 +1,11 @@
+# ----------------------------------------------------------------------------
+# Start kibana
+# ----------------------------------------------------------------------------
+---
+
+- name: Start kibana systemd
+  systemd:
+    name: 'kibana'
+    state: started
+  become: true
+  tags: start_kibana

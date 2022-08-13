@@ -1,0 +1,11 @@
+# ----------------------------------------------------------------------------
+# Start kibana
+# ----------------------------------------------------------------------------
+---
+
+- name: Start kibana process
+  command: "{{ kibana_exe }} &"
+  async: 5
+  poll: 0
+  tags: start_kibana, start_kibana_exe
+  changed_when: false

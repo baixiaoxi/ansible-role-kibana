@@ -1,0 +1,19 @@
+---
+# 检查服务是否可用
+- name: Verify Kibana is active
+  uri:
+    url: "http://{{ hostvars[inventory_hostname].ansible_host }}:{{ kibana_port }}/api/status"
+    method: GET
+    return_content: yes
+    status_code: 200
+    body_format: json
+    headers:
+      Authorization: "Bearer {{ elasticsearch_service_token }}"
+  register: kibana_api_status_output
+  until:
+    - kibana_api_status_output.status == 200
+    - kibana_api_status_output.json is defined
+    - kibana_api_status_output.json.status.overall.level == "available"
+  retries: 28
+  delay: 15
+  when: check_kibana_active | default(True)

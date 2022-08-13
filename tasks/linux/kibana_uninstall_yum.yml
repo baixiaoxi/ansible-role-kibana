@@ -1,0 +1,11 @@
+# ----------------------------------------------------------------------------
+# Uninstall Linux kibana packages
+# ----------------------------------------------------------------------------
+---
+
+- name: Uninstall kibana rpm package
+  yum:
+    name: 'kibana'
+    state: absent
+  become: true
+  tags: uninstall_kibana

@@ -1,0 +1,68 @@
+---
+# 生成encryptionKey秘钥, 默认从本地上传。因为每次生成新的秘钥，都会导致以前的数据无法使用。一般只在首次安装生成
+# 检查本地秘钥文件是否存在
+- name: Check for local encryptionKey file
+  delegate_to: localhost
+  stat:
+    path: "{{ elk_certs_dir }}/kibana_encryption_keys.token"
+  register: stat_encryptionkey_file
+
+# 上传秘钥
+- name: Get kibana encryption keys
+  when: stat_encryptionkey_file.stat.exists
+  set_fact:
+    kibana_encryptedSavedObjects_key: "{{ (lookup('file', elk_certs_dir + '/kibana_encryption_keys.token') | from_json).kibana_encryptedSavedObjects_key }}"
+    kibana_reporting_key: "{{ (lookup('file', elk_certs_dir + '/kibana_encryption_keys.token') | from_json).kibana_reporting_key }}"
+    kibana_security_key: "{{ (lookup('file', elk_certs_dir + '/kibana_encryption_keys.token') | from_json).kibana_security_key }}"
+
+# 生成秘钥
+- name: Generate and save encryption keys
+  when: not stat_encryptionkey_file.stat.exists or ((kibana_force_generate_encryption_keys is defined) and (kibana_force_generate_encryption_keys | bool))
+  block:
+    - name: Generate encryption keys
+      become: yes
+      shell: /usr/share/kibana/bin/kibana-encryption-keys generate
+      register: kibana_encryption_keys_info
+  
+    # 获取encryption keys
+    - name: Get encryption keys
+      set_fact:
+        kibana_encryptedSavedObjects_key: "{{ kibana_encryption_keys_info.stdout | regex_search('xpack.encryptedSavedObjects.encryptionKey: (.+)', '\\1') | default([''], true) | first }}"
+        kibana_reporting_key: "{{ kibana_encryption_keys_info.stdout | regex_search('xpack.reporting.encryptionKey: (.+)', '\\1') | default([''], true) | first }}"
+        kibana_security_key: "{{ kibana_encryption_keys_info.stdout | regex_search('xpack.security.encryptionKey: (.+)', '\\1') | default([''], true) | first }}"
+
+    # 保存秘钥到本地
+    - name: Save kibana encryption keys
+      copy:
+        content: '{ "kibana_encryptedSavedObjects_key": "{{ kibana_encryptedSavedObjects_key }}", "kibana_reporting_key": "{{ kibana_reporting_key }}", "kibana_security_key": "{{ kibana_security_key }}"}'
+        dest: "{{ elk_certs_dir }}/kibana_encryption_keys.token"
+      delegate_to: localhost
+
+# 检查keystore是否存在
+- name: Check for keystore file
+  become: yes
+  stat:
+    path: "/etc/kibana/kibana.keystore"
+  register: stat_keystore_file
+
+# 生成keystore
+- name: Generate keystore
+  become: yes
+  when: not stat_keystore_file.stat.exists
+  shell: "/usr/share/kibana/bin/kibana-keystore create"
+
+# 存储秘钥到keystore里
+- name: "Save keys in keystore"
+  become: yes
+  expect:
+    command: "/usr/share/kibana/bin/kibana-keystore add {{ key_item.key }}"
+    responses:
+      "Enter value for (.*)": "{{ key_item.value }}"
+      "Setting (.*) already exists(.*)": "y"
+  # no_log: true
+  loop_control:
+    loop_var: key_item
+  with_items:
+    - { key: "xpack.encryptedSavedObjects.encryptionKey", value: "{{ kibana_encryptedSavedObjects_key }}" }
+    - { key: "xpack.reporting.encryptionKey", value: "{{ kibana_reporting_key }}" }
+    - { key: "xpack.security.encryptionKey", value: "{{ kibana_security_key }}" }

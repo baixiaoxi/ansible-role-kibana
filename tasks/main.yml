@@ -1,0 +1,49 @@
+# ----------------------------------------------------------------------------
+# Kibana tasks
+# ----------------------------------------------------------------------------
+---
+
+- name: Set package extension variable
+  set_fact:
+    ait_kibana_pkg_ext: '{{ kibana_package_ext |
+                            regex_replace(".tar.gz", "tar") |
+                            regex_replace( "\.", "") }}'
+
+- name: Set package and server manager variables
+  set_fact:
+    ait_kibana_pkg_mgr: '{%- if ait_kibana_pkg_ext == "tar" or ait_kibana_pkg_ext == "zip" -%}
+                          {{ ait_kibana_pkg_ext }}
+                        {%- else -%}
+                          {{ ansible_pkg_mgr }}
+                        {%- endif -%}'
+    ait_kibana_srv_mgr: '{%- if ait_kibana_pkg_ext == "tar" or ait_kibana_pkg_ext == "zip" -%}
+                          {{ ait_kibana_pkg_ext }}
+                        {%- else -%}
+                          {{ ansible_service_mgr }}
+                        {%- endif -%}'
+
+- name: Get elasticsearch service token
+  set_fact:
+    elasticsearch_service_token: "{{ (lookup('file', elk_service_token) | from_json).value }}"
+
+# 包管理对应的变量
+- name: Include package specific var file
+  include_vars: "vars_{{ait_kibana_pkg_ext if (ait_kibana_pkg_ext) else ansible_pkg_mgr}}.yml"
+
+# 执行任务组
+- name: Include ait_role task files
+  include_tasks: '{{ lookup("first_found", kibana_task_files) }}'
+  vars: 
+    - ait_args: '{{ item.args }}'
+  with_items: '{{ kibana_roles[ait_role] }}'
+  when: ait_role is defined and kibana_roles[ait_role] is defined
+
+# 执行单个任务
+# Include task files for individual use
+# name: Include ait_action task file
+- name: Include ait_action task file
+  include_tasks: '{{ lookup("first_found", kibana_task_files) }}'
+  vars:
+    item:
+      action: '{{ ait_action }}'
+  when: ait_action is defined

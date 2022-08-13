@@ -1,0 +1,11 @@
+# ----------------------------------------------------------------------------
+# Shutdown kibana
+# ----------------------------------------------------------------------------
+---
+
+- name: Stop kibana service
+  service:
+    name: 'kibana'
+    state: stopped
+  become: true
+  tags: stop_kibana

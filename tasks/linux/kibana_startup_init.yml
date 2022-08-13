@@ -1,0 +1,11 @@
+# ----------------------------------------------------------------------------
+# Start kibana
+# ----------------------------------------------------------------------------
+---
+
+- name: Start kibana service
+  service:
+    name: 'kibana'
+    state: started
+  become: true
+  tags: start_kibana

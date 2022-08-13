@@ -1,0 +1,58 @@
+
+{% if kibana_config %}
+{{ kibana_config | to_nice_yaml(indent=2) }}
+{% endif %}
+
+elasticsearch.serviceAccountToken: "{{ elasticsearch_service_token }}"
+
+logging:
+  appenders:
+    file:
+      type: file
+      fileName: {{ kibana_log_file }}
+      layout:
+        type: json
+  root:
+    appenders:
+      - default
+      - file
+
+
+pid.file: /run/kibana/kibana.pid
+
+# 默认的fleet-server policy
+
+xpack.fleet.packages:
+  - name: system
+    version: latest
+  - name: fleet_server
+    version: latest
+xpack.fleet.agentPolicies:
+  - name: Fleet Server policy
+    id: fleet-server-policy
+    is_default_fleet_server: true
+    namespace: fleetserver
+    monitoring_enabled:
+      - logs
+      - metrics
+    package_policies:
+      - name: fleet_server-1
+        id: fleet_server-1
+        package:
+          name: fleet_server
+      - name: system-1
+        id: default-system
+        package:
+          name: system
+  - name: Elk Agent policy
+    id: elk-agent-policy
+    namespace: default
+    monitoring_enabled:
+      - logs
+      - metrics
+    unenroll_timeout: 900
+    package_policies:
+      - name: system-1
+        id: default-system
+        package:
+          name: system

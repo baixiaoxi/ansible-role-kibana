@@ -1,0 +1,10 @@
+# ----------------------------------------------------------------------------
+# Uninstall Linux kibana packages
+# ----------------------------------------------------------------------------
+---
+
+- name: Remove kibana directory
+  file:
+    state: absent
+    path: '{{ kibana_rootdir | trim }}'
+  tags: uninstall_kibana

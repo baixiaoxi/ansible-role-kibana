@@ -1,0 +1,20 @@
+---
+
+- name: Download kibana rpm package
+  get_url:
+    url: '{{ kibana_package_url }}'
+    dest: '{{ kibana_package }}'
+    timeout: '{{ url_timeout }}'
+    checksum: 'sha512:{{ kibana_package_url }}.sha512'
+  tags: package_kibana
+  register: kibana_get_url
+  until: kibana_get_url is not failed
+  retries: 2
+  delay: 30
+
+- name: Install kibana rpm package
+  yum:
+    name: '{{ kibana_package }}'
+    state: present
+  become: true
+  tags: install_kibana

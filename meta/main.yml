@@ -1,0 +1,20 @@
+---
+
+galaxy_info:
+  role_name: kibana
+  author: baixiaoxi
+  description: ansible role for kibana
+  company: ""
+  license: 'License (Apache)'
+  min_ansible_version: '2.10'
+  platforms:
+    - name: Ubuntu
+      versions:
+        - "bionic"
+        - "focal"
+        - "jammy"
+  galaxy_tags:
+    - elasticsearch
+    - kibana
+
+dependencies: []

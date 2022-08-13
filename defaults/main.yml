@@ -1,0 +1,62 @@
+# -----------------------------------------------------------------------------
+# Kibana vars
+# -----------------------------------------------------------------------------
+---
+
+# 从压缩包安装
+#elasticsearch_package_url: https://artifacts.elastic.co/downloads/elasticsearch/elasticsearch-8.3.3-linux-x86_64.tar.gz
+#kibana_package_url: https://artifacts.elastic.co/downloads/kibana/kibana-8.3.3-linux-x86_64.tar.gz
+#package_ext: tar.gz
+# Extract package extension
+# kibana_package_ext: "{{ kibana_package_url | splitext | last | regex_replace('.gz', '.tar.gz') }}"
+kibana_package_ext: ""
+
+kibana_version: "8.3.3"
+kibana_user: kibana
+kibana_group: kibana
+elk_certs_dir: "./certs"
+
+# Timeout
+kibana_timeout: 60
+kibana_port: 5601
+kibana_username: "{{ lookup('env','AIT_KIBANA_USERNAME') | default('kibana', true) }}"
+kibana_password: "{{ lookup('env','AIT_KIBANA_PASSWORD') | default('wukong', true) }}"
+
+# Variables to run multiple role task files in a group
+# Must have role name (key), action and args that map to individual task files
+kibana_roles:
+  # 安装 -> 配置 -> 启动
+  kibana_install_config_start_verify:
+    - {action: 'kibana_install', args: {}}
+    - {action: 'kibana_user', args: {}}
+    - {action: 'kibana_config', args: {}}
+    - {action: 'kibana_restart', args: {}}
+    - {action: 'kibana_log_tail', args: {ait_log_searchstr: started}}
+    - {action: 'kibana_is_running', args: {}}
+    - {action: 'kibana_api_status', args: {}}
+  # 启动
+  kibana_startup_verify:
+    - {action: 'kibana_restart', args: {}}
+    - {action: 'kibana_log_tail', args: {ait_log_searchstr: started}}
+    - {action: 'kibana_is_running', args: {}}
+    - {action: 'kibana_api_status', args: {}}
+  # 关闭
+  kibana_shutdown_verify:
+    - {action: 'kibana_shutdown', args: {}}
+    - {action: 'kibana_is_not_running', args: {}}
+  # 卸载
+  kibana_shutdown_uninstall_verify:
+    - {action: 'kibana_shutdown', args: {}}
+    - {action: 'kibana_uninstall', args: {}}
+    - {action: 'kibana_is_not_running', args: {}}
+
+kibana_task_files:
+  - '{{ ansible_system | lower }}/{{ item.action }}.yml'
+  - '{{ ansible_system | lower }}/{{ item.action }}_{{ ait_kibana_pkg_ext }}.yml'
+  - '{{ ansible_system | lower }}/{{ item.action }}_{{ ait_kibana_pkg_mgr | trim }}.yml'
+  - '{{ ansible_system | lower }}/{{ item.action }}_{{ ait_kibana_srv_mgr | trim }}.yml'
+
+# kibana log search strings
+kibana_log_find:
+  started: '.*(Kibana index ready|Server running at|http server running at)'
+  stopped: 'TBD'

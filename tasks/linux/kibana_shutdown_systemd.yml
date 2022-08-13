@@ -1,0 +1,11 @@
+# ----------------------------------------------------------------------------
+# Shutdown kibana
+# ----------------------------------------------------------------------------
+---
+
+- name: Stop kibana systemd
+  systemd:
+      name: 'kibana.service'
+      state: stopped
+  become: true
+  tags: stop_kibana

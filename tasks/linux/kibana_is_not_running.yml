@@ -1,0 +1,18 @@
+---
+
+- name: Verify kibana is not running
+  block:
+    - name: Get kibana process
+      shell: "lsof -i:{{ kibana_port }} | tail -1 | awk '{print $2}'"
+      args:
+        executable: /bin/bash
+      register: kibana_process_id
+      until: kibana_process_id.stdout | length == 0
+      retries: 3
+      delay: 2
+      changed_when: false
+      
+    - name: Fail if kibana process is running
+      fail:
+        msg: 'kibana is running'
+      when: kibana_process_id.stdout | length > 0

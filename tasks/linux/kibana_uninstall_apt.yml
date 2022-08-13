@@ -1,0 +1,38 @@
+# ----------------------------------------------------------------------------
+# Uninstall Linux kibana packages
+# ----------------------------------------------------------------------------
+---
+# 删除老的版本, purge
+- name: Check if the kibana package is installed
+    shell: "dpkg-query -W -f'${Status}' kibana"
+    register: kibana_package_install
+    failed_when: False
+    changed_when: False
+    check_mode: no
+    tags: uninstall_kibana
+
+  # 停止服务
+  - name: stop kibana
+    service:
+      name: 'kibana'
+      state: stopped
+    when: kibana_package_install.stdout == 'install ok installed'
+    tags: uninstall_kibana
+
+  # 卸载安装包
+  - name: Uninstall kibana deb package
+    apt:
+      name: 'kibana'
+      state: absent
+      purge: "{{ 'yes' if ((purge is defined) and (purge | bool)) else 'no'}}"
+    when: kibana_package_install.stdout == 'install ok installed'
+    tags: uninstall_kibana
+
+  # 清理配置文件
+  - name: Remove datas
+    file:
+      path: "{{ item }}"
+      state: absent
+    when: (purge is defined) and (purge | bool)
+    with_items:
+      - "/var/lib/kibana"
